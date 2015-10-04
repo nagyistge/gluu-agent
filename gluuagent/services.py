@@ -24,9 +24,7 @@ class MinionService(object):
             self.logger.info("got minion with PID {}".format(pid))
         except IOError as exc:
             self.logger.error(exc)
-            return
-        else:
-            return pid
+        return pid
 
     def is_alive(self, pid):
         try:
