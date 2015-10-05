@@ -24,6 +24,9 @@ class GluuAgentCLI(click.MultiCommand):
         return daemon.list_actions()
 
     def get_command(self, ctx, name):
+        if name not in ctx.obj.list_actions():
+            return
+
         logger = get_logger(ctx.params.get("logfile"))
         service = MinionService(logger=logger)
         daemon = ctx.obj(pidfile=ctx.params.get("pidfile"),
