@@ -6,7 +6,6 @@
 import os
 import time
 import subprocess
-import sys
 
 from .utils import get_logger
 
@@ -34,16 +33,19 @@ class MinionService(object):
         return proc is not None
 
     def restart(self):
+        restarted = False
         try:
-            return subprocess.check_output(
+            cmd = subprocess.check_output(
                 "service salt-minion restart",
                 stderr=subprocess.STDOUT,
                 shell=True,
             )
+            self.logger.info(cmd)
+            restarted = True
         except subprocess.CalledProcessError as exc:
             self.logger.error(exc)
             self.logger.error(exc.output)
-            sys.exit(exc.returncode)
+        return restarted
 
     def run_forever(self):
         while True:
