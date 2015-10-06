@@ -1,0 +1,37 @@
+# /etc/init.d/gluu-agent
+PATH=/sbin:/usr/sbin:/bin:/usr/bin                                                                                                             [0/1336]
+DESC="Gluu Agent Daemon"
+NAME=gluu-agent
+DAEMON=/usr/bin/gluu-agent
+
+[ -x "$DAEMON" ] || exit 0
+
+# Read configuration variable file if it is present
+[ -r /etc/default/$NAME ] && . /etc/default/$NAME
+
+# Load the VERBOSE setting and other rcS variables
+. /lib/init/vars.sh
+ 
+# Define LSB log_* functions.
+# Depend on lsb-base (>= 3.2-14) to ensure that this file is present
+# and status_of_proc is working.
+. /lib/lsb/init-functions
+
+
+case "$1" in
+  start)
+        $DAEMON start
+        ;;
+  stop)
+        $DAEMON stop
+        ;;
+  status)
+        $DAEMON status
+        ;;
+  restart)
+        $DAEMON restart
+        ;;
+  *)
+        $DAEMON --help
+        ;;
+esac
