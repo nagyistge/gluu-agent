@@ -9,9 +9,11 @@ from collections import namedtuple
 import etcd
 import sh
 
+from gluuclusterlib.kv import get_provider_nodes
+from gluuclusterlib.kv import get_cluster_nodes
+from gluuclusterlib.kv import get_node
+
 from .utils import get_logger
-from .storages import get_cluster_nodes
-from .storages import get_provider_nodes
 
 DockerExecResult = namedtuple("DockerExecResult",
                               ["cmd", "exit_code", "retval"])
@@ -37,22 +39,6 @@ class BaseExecutor(object):
         self.cluster = cluster
         self.docker = docker
         self.kv = etcd.Client()
-
-    def get_node(self, node_id):
-        node = {}
-        try:
-            result = self.kv.read(
-                "gluucluster/nodes/{}".format(node_id),
-            )
-        except etcd.EtcdKeyNotFound:
-            self.logger.error(
-                "unable to find node with ID {}".format(node_id))
-        else:
-            node = {
-                child.key.split("/")[-1]: child.value
-                for child in result.children
-            }
-        return node
 
 
 class LdapExecutor(BaseExecutor):
@@ -91,7 +77,7 @@ class OxauthExecutor(BaseExecutor):
             sys.exit(1)
 
         ldap_nodes = [
-            self.get_node(node["id"]) for node in nodes
+            get_node(self.kv, node["id"]) for node in nodes
             if node["type"] == "ldap" and node["state"] == "SUCCESS"
         ]
 
@@ -131,7 +117,7 @@ class OxtrustExecutor(OxauthExecutor):
             sys.exit(1)
 
         httpd_nodes = [
-            self.get_node(node["id"]) for node in nodes
+            get_node(self.kv, node["id"]) for node in nodes
             if node["type"] == "httpd" and node["state"] == "SUCCESS"
         ]
         return httpd_nodes
