@@ -40,6 +40,12 @@ setup(
     zip_safe=False,
     install_requires=[
         "daemonocle",
+        "python-etcd",
+        "m2crypto",
+        "netaddr",
+        "pyyaml",
+        "docker-py",
+        "sh",
     ],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
