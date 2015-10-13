@@ -7,7 +7,6 @@ from collections import namedtuple
 
 import sh
 
-from .database import Database
 from .utils import get_logger
 
 DockerExecResult = namedtuple("DockerExecResult",
@@ -27,13 +26,15 @@ def run_docker_exec(client, container, cmd):
 
 
 class BaseExecutor(object):
-    def __init__(self, node, provider, cluster, docker):
-        self.logger = get_logger(name=__name__ + "." + self.__class__.__name__)
+    def __init__(self, node, provider, cluster, docker, db, logger=None):
+        self.logger = logger or get_logger(
+            name=__name__ + "." + self.__class__.__name__
+        )
         self.node = node
         self.provider = provider
         self.cluster = cluster
         self.docker = docker
-        self.db = Database()
+        self.db = db
 
 
 class LdapExecutor(BaseExecutor):

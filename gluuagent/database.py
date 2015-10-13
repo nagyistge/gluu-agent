@@ -3,18 +3,12 @@
 #
 # All rights reserved.
 
-
-import os
 import tinydb
 
 
-DEFAULT_DATABASE_URI = "/var/lib/gluu-cluster/db/db.json"
-
-
 class Database(object):
-    def __init__(self):
-        filepath = os.environ.get("DATABASE_URI", DEFAULT_DATABASE_URI)
-        self.db = tinydb.TinyDB(filepath)
+    def __init__(self, *args, **kwargs):
+        self.db = tinydb.TinyDB(*args, **kwargs)
 
         # shortcut to ``tinydb.where``
         self.where = tinydb.where

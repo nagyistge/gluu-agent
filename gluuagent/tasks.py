@@ -9,7 +9,6 @@ import docker
 import sh
 import yaml
 
-from .database import Database
 from .executors import LdapExecutor
 from .executors import OxauthExecutor
 from .executors import OxtrustExecutor
@@ -35,12 +34,12 @@ def format_node(data):
 
 
 class RecoveryTask(object):
-    def __init__(self, logger=None):
+    def __init__(self, db, logger=None):
         self.logger = logger or get_logger(
             name=__name__ + "." + self.__class__.__name__
         )
 
-        self.db = Database()
+        self.db = db
 
         # as we only need to recover containers locally,
         # we use docker.Client with unix socket connection
@@ -179,5 +178,6 @@ class RecoveryTask(object):
         if exec_cls:
             self.logger.info("running entrypoint for "
                              "{} node {}".format(node["type"], node["id"]))
-            executor = exec_cls(node, provider, cluster, self.docker)
+            executor = exec_cls(node, provider, cluster,
+                                self.docker, self.db, self.logger)
             executor.run_entrypoint()
