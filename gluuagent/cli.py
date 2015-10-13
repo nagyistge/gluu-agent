@@ -26,8 +26,8 @@ def main():
     )
 @click.option(
     "--logfile",
-    default="/var/log/gluuagent-recover.log",
-    help="Path to log file (default to /var/log/gluuagent-recover.log)",
+    default=None,
+    help="Path to log file (if omitted will use stdout)",
     metavar="<logfile>",
     )
 def recover(database, logfile):
