@@ -6,35 +6,41 @@
 import sys
 
 import docker
-import etcd
 import sh
 import yaml
 
-from gluuclusterlib.kv import get_provider
-from gluuclusterlib.kv import get_cluster
-from gluuclusterlib.kv import get_node
-from gluuclusterlib.kv import get_provider_nodes
-from gluuclusterlib.crypto import decrypt_text
-from gluuclusterlib.network import exposed_weave_ip
-
+from .database import Database
 from .executors import LdapExecutor
 from .executors import OxauthExecutor
 from .executors import OxtrustExecutor
 from .executors import HttpdExecutor
-
-
 from .utils import get_logger
+from .utils import decrypt_text
+from .utils import expose_cidr
 
 PROVIDER_CONFIG_FILE = "/etc/gluu/provider.yml"
 STATE_DISABLED = "DISABLED"
 STATE_SUCCESS = "SUCCESS"
+RECOVERY_PRIORITY_CHOICES = {
+    "ldap": 1,
+    "oxauth": 2,
+    "httpd": 3,
+    "oxtrust": 4,
+}
+
+
+def format_node(data):
+    data["recovery_priority"] = RECOVERY_PRIORITY_CHOICES.get(data["type"], 0)
+    return data
 
 
 class RecoveryTask(object):
-    def __init__(self):
-        self.logger = get_logger(name=__name__ + "." + self.__class__.__name__)
+    def __init__(self, logger=None):
+        self.logger = logger or get_logger(
+            name=__name__ + "." + self.__class__.__name__
+        )
 
-        self.kv = etcd.Client()
+        self.db = Database()
 
         # as we only need to recover containers locally,
         # we use docker.Client with unix socket connection
@@ -50,17 +56,16 @@ class RecoveryTask(object):
             sys.exit(1)
 
     def execute(self):
-        try:
-            provider = get_provider(self.kv, self.config["provider_id"])
-        except (etcd.EtcdKeyNotFound, etcd.EtcdConnectionFailed,) as exc:
-            self.logger.error(exc)
+        provider = self.db.get(self.config["provider_id"], "providers")
+        cluster = self.db.get(self.config["cluster_id"], "clusters")
+
+        if not any([provider, cluster]):
+            self.logger.error("provider or cluster is invalid")
             sys.exit(1)
 
-        try:
-            cluster = get_cluster(self.kv, self.config["cluster_id"])
-        except (etcd.EtcdKeyNotFound, etcd.EtcdConnectionFailed,) as exc:
-            self.logger.error(exc)
-            sys.exit(1)
+        self.logger.info("trying to recover {} provider {}".format(
+            provider["type"], provider["id"],
+        ))
 
         # recover weave container
         self.recover_weave(provider, cluster)
@@ -71,52 +76,65 @@ class RecoveryTask(object):
         # recover prometheus container
         self.recover_prometheus(provider)
 
+        self.logger.info(
+            "recovery process for {} provider {} is finished".format(
+                provider["type"], provider["id"])
+        )
+
     def container_stopped(self, container):
         meta = self.docker.inspect_container(container)
         return meta["State"]["Running"] is False
 
     def recover_prometheus(self, provider):
-        if (provider["type"] == "master"
-                and self.container_stopped("prometheus")):
+        if provider["type"] == "master":
+            if not self.container_stopped("prometheus"):
+                self.logger.info("prometheus container is already running")
+                return
+
             self.logger.warn("prometheus container is not running")
             self.logger.info("restarting prometheus container")
             self.docker.restart("prometheus")
 
     def recover_weave(self, provider, cluster):
-        if self.container_stopped("weave"):
-            self.logger.warn("weave container is not running")
-            self.logger.info("restarting weave container")
+        if not self.container_stopped("weave"):
+            self.logger.info("weave container is already running")
+            return
 
-            passwd = decrypt_text(cluster["admin_pw"], cluster["passkey"])
-            if provider["type"] == "master":
-                sh.weave("launch", "-password", passwd)
-            else:
-                with open("/etc/salt/minion") as fp:
-                    config = fp.read()
-                    opts = yaml.safe_load(config)
-                    sh.weave("launch", "-password", passwd, opts["master"])
+        self.logger.warn("weave container is not running")
+        self.logger.info("restarting weave container")
 
-            addr, prefixlen = exposed_weave_ip(cluster["weave_ip_network"])
-            sh.weave("expose", "{}/{}".format(addr, prefixlen))
+        passwd = decrypt_text(cluster["admin_pw"], cluster["passkey"])
+        if provider["type"] == "master":
+            sh.weave("launch", "-password", passwd)
+        else:
+            with open("/etc/salt/minion") as fp:
+                config = fp.read()
+                opts = yaml.safe_load(config)
+                sh.weave("launch", "-password", passwd, opts["master"])
+
+        addr, prefixlen = expose_cidr(cluster["weave_ip_network"])
+        sh.weave("expose", "{}/{}".format(addr, prefixlen))
 
     def recover_nodes(self, provider, cluster):
-        try:
-            nodes = get_provider_nodes(self.kv, provider["id"])
-        except (etcd.EtcdKeyNotFound, etcd.EtcdConnectionFailed,) as exc:
-            self.logger.error(exc)
-            sys.exit(1)
+        _nodes = self.db.search_from_table(
+            "nodes",
+            (self.db.where("provider_id") == self.config["provider_id"])
+            & (self.db.where("state") == STATE_SUCCESS)
+        )
 
-        success_nodes = [
-            get_node(self.kv, node["id"]) for node in nodes
-            if node["state"] == STATE_SUCCESS
-        ]
+        # attach the recovery priority
+        success_nodes = [format_node(node) for node in _nodes]
 
         # disabled nodes must be recovered so we can enable again when
         # expired license is updated
-        disabled_nodes = [
-            get_node(self.kv, node["id"]) for node in nodes
-            if node["state"] == STATE_DISABLED
-        ]
+        _nodes = self.db.search_from_table(
+            "nodes",
+            (self.db.where("provider_id") == self.config["provider_id"])
+            & (self.db.where("state") == STATE_DISABLED)
+        )
+
+        # attach the recovery priority
+        disabled_nodes = [format_node(node) for node in _nodes]
 
         # sort nodes by its recovery_priority property
         # so we will have a fully recovered nodes
@@ -124,25 +142,30 @@ class RecoveryTask(object):
                        key=lambda node: node["recovery_priority"])
 
         for node in nodes:
-            if self.container_stopped(node["id"]):
-                self.logger.warn("{} node {} is not running".format(
+            if not self.container_stopped(node["id"]):
+                self.logger.info("{} node {} is already running".format(
                     node["type"], node["id"]
                 ))
+                continue
 
-                self.logger.info("restarting {} node {}".format(
-                    node["type"], node["id"]
-                ))
-                self.docker.restart(node["id"])
+            self.logger.warn("{} node {} is not running".format(
+                node["type"], node["id"]
+            ))
 
-                if node["state"] == STATE_SUCCESS:
-                    self.logger.info("attaching weave IP")
-                    sh.weave(
-                        "attach",
-                        "{}/{}".format(node["weave_ip"],
-                                       node["weave_prefixlen"]),
-                        node["id"],
-                    )
-                self.setup_node(node, provider, cluster)
+            self.logger.info("restarting {} node {}".format(
+                node["type"], node["id"]
+            ))
+            self.docker.restart(node["id"])
+
+            if node["state"] == STATE_SUCCESS:
+                self.logger.info("attaching weave IP")
+                sh.weave(
+                    "attach",
+                    "{}/{}".format(node["weave_ip"],
+                                   node["weave_prefixlen"]),
+                    node["id"],
+                )
+            self.setup_node(node, provider, cluster)
 
     def setup_node(self, node, provider, cluster):
         executors = {

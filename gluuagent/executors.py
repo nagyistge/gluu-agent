@@ -3,16 +3,11 @@
 #
 # All rights reserved.
 
-import sys
 from collections import namedtuple
 
-import etcd
 import sh
 
-from gluuclusterlib.kv import get_provider_nodes
-from gluuclusterlib.kv import get_cluster_nodes
-from gluuclusterlib.kv import get_node
-
+from .database import Database
 from .utils import get_logger
 
 DockerExecResult = namedtuple("DockerExecResult",
@@ -38,7 +33,7 @@ class BaseExecutor(object):
         self.provider = provider
         self.cluster = cluster
         self.docker = docker
-        self.kv = etcd.Client()
+        self.db = Database()
 
 
 class LdapExecutor(BaseExecutor):
@@ -70,16 +65,11 @@ class OxauthExecutor(BaseExecutor):
             self.docker.stop(self.node["id"])
 
     def add_ldap_hosts(self):
-        try:
-            nodes = get_cluster_nodes(self.kv, self.cluster["id"])
-        except (etcd.EtcdKeyNotFound, etcd.EtcdConnectionFailed,) as exc:
-            self.logger.error(exc)
-            sys.exit(1)
-
-        ldap_nodes = [
-            get_node(self.kv, node["id"]) for node in nodes
-            if node["type"] == "ldap" and node["state"] == "SUCCESS"
-        ]
+        ldap_nodes = self.db.search_from_table(
+            "nodes",
+            (self.db.where("type") == "ldap")
+            & (self.db.where("state") == "SUCCESS")
+        )
 
         for ldap in ldap_nodes:
             # add the entry only if line is not exist in /etc/hosts
@@ -110,16 +100,11 @@ class OxtrustExecutor(OxauthExecutor):
         self.start_tomcat()
 
     def get_httpd_nodes(self):
-        try:
-            nodes = get_provider_nodes(self.kv, self.provider["id"])
-        except (etcd.EtcdKeyNotFound, etcd.EtcdConnectionFailed,) as exc:
-            self.logger.error(exc)
-            sys.exit(1)
-
-        httpd_nodes = [
-            get_node(self.kv, node["id"]) for node in nodes
-            if node["type"] == "httpd" and node["state"] == "SUCCESS"
-        ]
+        httpd_nodes = self.db.search_from_table(
+            "nodes",
+            (self.db.where("type") == "httpd")
+            & (self.db.where("state") == "SUCCESS")
+        )
         return httpd_nodes
 
     def add_httpd_host(self, httpd):
@@ -159,7 +144,8 @@ class OxtrustExecutor(OxauthExecutor):
         ])
         result = run_docker_exec(self.docker, self.node["id"], cmd)
         if result.exit_code != 0:
-            self.logger.error(
+            # it is safe to have error when importing existing cert
+            self.logger.warn(
                 "got error with exit code {} while running docker exec; "
                 "reason={}".format(result.exit_code, result.retval)
             )
