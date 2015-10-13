@@ -3,12 +3,16 @@
 #
 # All rights reserved.
 
+import socket
 import sys
 
 import docker
 import sh
 import yaml
 
+from .constants import STATE_SUCCESS
+from .constants import STATE_DISABLED
+from .constants import RECOVERY_PRIORITY_CHOICES
 from .executors import LdapExecutor
 from .executors import OxauthExecutor
 from .executors import OxtrustExecutor
@@ -16,16 +20,6 @@ from .executors import HttpdExecutor
 from .utils import get_logger
 from .utils import decrypt_text
 from .utils import expose_cidr
-
-PROVIDER_CONFIG_FILE = "/etc/gluu/provider.yml"
-STATE_DISABLED = "DISABLED"
-STATE_SUCCESS = "SUCCESS"
-RECOVERY_PRIORITY_CHOICES = {
-    "ldap": 1,
-    "oxauth": 2,
-    "httpd": 3,
-    "oxtrust": 4,
-}
 
 
 def format_node(data):
@@ -38,25 +32,25 @@ class RecoveryTask(object):
         self.logger = logger or get_logger(
             name=__name__ + "." + self.__class__.__name__
         )
-
         self.db = db
 
         # as we only need to recover containers locally,
         # we use docker.Client with unix socket connection
         self.docker = docker.Client()
 
-        try:
-            with open(PROVIDER_CONFIG_FILE) as fp:
-                self.config = yaml.safe_load(fp.read())
-        except IOError:
-            self.logger.error(
-                "unable to read config from {}".format(PROVIDER_CONFIG_FILE)
-            )
-            sys.exit(1)
-
     def execute(self):
-        provider = self.db.get(self.config["provider_id"], "providers")
-        cluster = self.db.get(self.config["cluster_id"], "clusters")
+        try:
+            cluster = self.db.all("clusters")[0]
+        except IndexError:
+            cluster = None
+
+        try:
+            provider = self.db.search_from_table(
+                "providers",
+                self.db.where("hostname") == socket.getfqdn(),
+            )[0]
+        except IndexError:
+            provider = None
 
         if not any([provider, cluster]):
             self.logger.error("provider or cluster is invalid")
@@ -117,7 +111,7 @@ class RecoveryTask(object):
     def recover_nodes(self, provider, cluster):
         _nodes = self.db.search_from_table(
             "nodes",
-            (self.db.where("provider_id") == self.config["provider_id"])
+            (self.db.where("provider_id") == provider["id"])
             & (self.db.where("state") == STATE_SUCCESS)
         )
 
@@ -128,7 +122,7 @@ class RecoveryTask(object):
         # expired license is updated
         _nodes = self.db.search_from_table(
             "nodes",
-            (self.db.where("provider_id") == self.config["provider_id"])
+            (self.db.where("provider_id") == provider["id"])
             & (self.db.where("state") == STATE_DISABLED)
         )
 

@@ -7,6 +7,7 @@ from collections import namedtuple
 
 import sh
 
+from .constants import STATE_SUCCESS
 from .utils import get_logger
 
 DockerExecResult = namedtuple("DockerExecResult",
@@ -69,7 +70,7 @@ class OxauthExecutor(BaseExecutor):
         ldap_nodes = self.db.search_from_table(
             "nodes",
             (self.db.where("type") == "ldap")
-            & (self.db.where("state") == "SUCCESS")
+            & (self.db.where("state") == STATE_SUCCESS)
         )
 
         for ldap in ldap_nodes:
