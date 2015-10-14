@@ -3,6 +3,9 @@
 #
 # All rights reserved.
 
+import os.path
+import sys
+
 import click
 
 from .database import Database
@@ -33,7 +36,13 @@ def main():
 def recover(database, logfile):
     """Run recovery process.
     """
+    logger = get_logger(logfile, name="gluuagent.recover")
+
+    # checks if database is exist
+    if not os.path.exists(database):
+        logger.error("unable to read database {}".format(database))
+        sys.exit(1)
+
     db = Database(database)
-    logger = get_logger(logfile)
     task = RecoveryTask(db, logger)
     task.execute()
