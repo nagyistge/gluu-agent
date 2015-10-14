@@ -7,7 +7,7 @@
 Gluu Agent
 ----------
 
-Daemon to ensure provider is reachable within cluster.
+A tool to ensure provider is reachable within cluster.
 """
 import codecs
 import os
@@ -34,7 +34,7 @@ setup(
     license="Gluu",
     author="Gluu",
     author_email="info@gluu.org",
-    description="Daemon to ensure provider is reachable within cluster.",
+    description="A tool to ensure provider is reachable within cluster.",
     long_description=__doc__,
     packages=find_packages(),
     zip_safe=False,
