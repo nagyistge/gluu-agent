@@ -12,7 +12,7 @@ from netaddr import IPNetwork
 
 
 def get_logger(logfile=None, name=None):
-    logger = logging.getLogger(name or "gluu-agent")
+    logger = logging.getLogger(name or "gluuagent")
     logger.setLevel(logging.INFO)
 
     if not logfile:
