@@ -1,7 +1,7 @@
-daemonocle==0.8
+click==2.5
+docker-py==1.2.3
 M2Crypto==0.22.3
+netaddr==0.7.18
 PyYAML==3.11
 sh==1.11
-docker-py==1.4.0
-netaddr==0.7.18
-python-etcd==0.4.2
+tinydb==2.4

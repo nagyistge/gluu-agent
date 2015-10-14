@@ -39,10 +39,13 @@ setup(
     packages=find_packages(),
     zip_safe=False,
     install_requires=[
-        "m2crypto",
+        "click",
+        "m2crypto<=0.22.3",
         "netaddr",
         "pyyaml",
-        "docker-py",
+        # we're still using docker v1.6.2 (API version 1.18);
+        # docker-py 1.3+ probably will break existing code
+        "docker-py<1.3",
         "sh",
         "tinydb",
     ],
