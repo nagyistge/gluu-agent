@@ -36,15 +36,15 @@ case "$1" in
     start)
         do_recover
         ;;
-     stop)
-         do_stop
-         ;;
+    # stop)
+    #     do_stop
+    #     ;;
     # status)
     #     ;;
-    restart)
-          do_stop
-          do_recover
-         ;;
+    #restart)
+    #      do_stop
+    #      do_recover
+    #     ;;
     recover)
         do_recover
         ;;
