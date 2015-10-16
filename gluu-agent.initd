@@ -29,17 +29,22 @@ do_recover() {
     nohup $DAEMON recover --database $DATABASE --logfile $RECOVER_LOGFILE >/dev/null 2>&1 &
 }
 
+do_stop() {
+    
+}
 case "$1" in
     start)
         do_recover
         ;;
-    # stop)
-    #     do_stop
-    #     ;;
+     stop)
+         do_stop
+         ;;
     # status)
     #     ;;
-    # restart)
-    #     ;;
+    restart)
+          do_stop
+          do_recover
+         ;;
     recover)
         do_recover
         ;;
