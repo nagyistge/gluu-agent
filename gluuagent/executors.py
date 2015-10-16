@@ -37,34 +37,19 @@ class BaseExecutor(object):
         self.docker = docker
         self.db = db
 
+    def run_entrypoint(self):
+        raise NotImplementedError
+
 
 class LdapExecutor(BaseExecutor):
     def run_entrypoint(self):
-        cmd = "/opt/opendj/bin/start-ds"
-        result = run_docker_exec(self.docker, self.node["id"], cmd)
-        if result.exit_code != 0:
-            self.logger.error(
-                "got error with exit code {} while running docker exec; "
-                "reason={}".format(result.exit_code, result.retval)
-            )
-            self.docker.stop(self.node["id"])
+        # entrypoint is moved to supervisord
+        pass
 
 
 class OxauthExecutor(BaseExecutor):
     def run_entrypoint(self):
         self.add_ldap_hosts()
-        self.start_tomcat()
-
-    def start_tomcat(self):
-        cmd = "export CATALINA_PID=/opt/tomcat/bin/catalina.pid " \
-              " && /opt/tomcat/bin/catalina.sh start"
-        result = run_docker_exec(self.docker, self.node["id"], cmd)
-        if result.exit_code != 0:
-            self.logger.error(
-                "got error with exit code {} while running docker exec; "
-                "reason={}".format(result.exit_code, result.retval)
-            )
-            self.docker.stop(self.node["id"])
 
     def add_ldap_hosts(self):
         ldap_nodes = self.db.search_from_table(
@@ -99,7 +84,6 @@ class OxtrustExecutor(OxauthExecutor):
             self.import_httpd_cert()
         except IndexError:
             pass
-        self.start_tomcat()
 
     def get_httpd_nodes(self):
         httpd_nodes = self.db.search_from_table(
@@ -155,15 +139,7 @@ class OxtrustExecutor(OxauthExecutor):
 
 class HttpdExecutor(BaseExecutor):
     def run_entrypoint(self):
-        cmd = "rm /var/run/apache2/apache2.pid && service apache2 start"
-        result = run_docker_exec(self.docker, self.node["id"], cmd)
-        if result.exit_code != 0:
-            self.logger.error(
-                "got error with exit code {} while running docker exec; "
-                "reason={}".format(result.exit_code, result.retval)
-            )
-            self.docker.stop(self.node["id"])
-
+        # iptables rules are not persisted, hence we're adding them again
         for port in [80, 443]:
             try:
                 sh.iptables(

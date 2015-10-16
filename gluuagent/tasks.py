@@ -135,20 +135,18 @@ class RecoveryTask(object):
                        key=lambda node: node["recovery_priority"])
 
         for node in nodes:
-            if not self.container_stopped(node["id"]):
-                self.logger.info("{} node {} is already running".format(
+            if self.container_stopped(node["id"]):
+                self.logger.warn("{} node {} is not running".format(
                     node["type"], node["id"]
                 ))
-                continue
+                self.logger.info("restarting {} node {}".format(
+                    node["type"], node["id"]
+                ))
+                self.docker.restart(node["id"])
 
-            self.logger.warn("{} node {} is not running".format(
+            self.logger.info("{} node {} is already running".format(
                 node["type"], node["id"]
             ))
-
-            self.logger.info("restarting {} node {}".format(
-                node["type"], node["id"]
-            ))
-            self.docker.restart(node["id"])
 
             if node["state"] == STATE_SUCCESS:
                 self.logger.info("attaching weave IP")
