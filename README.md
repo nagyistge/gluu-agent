@@ -1,2 +1,3 @@
 # gluu-agent
-Daemon to ensure provider is reachable within cluster
+
+A tool to ensure provider is reachable within cluster

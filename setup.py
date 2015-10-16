@@ -7,7 +7,7 @@
 Gluu Agent
 ----------
 
-Daemon to ensure provider is reachable within cluster.
+A tool to ensure provider is reachable within cluster.
 """
 import codecs
 import os
@@ -34,12 +34,20 @@ setup(
     license="Gluu",
     author="Gluu",
     author_email="info@gluu.org",
-    description="Daemon to ensure provider is reachable within cluster.",
+    description="A tool to ensure provider is reachable within cluster.",
     long_description=__doc__,
     packages=find_packages(),
     zip_safe=False,
     install_requires=[
-        "daemonocle",
+        "click",
+        "m2crypto<=0.22.3",
+        "netaddr",
+        "pyyaml",
+        # we're still using docker v1.6.2 (API version 1.18);
+        # docker-py 1.3+ probably will break existing code
+        "docker-py<1.3",
+        "sh",
+        "tinydb",
     ],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",

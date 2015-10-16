@@ -3,70 +3,46 @@
 #
 # All rights reserved.
 
-import click
-from daemonocle import Daemon
+import os.path
+import sys
 
-from .services import MinionService
+import click
+
+from .database import Database
+from .tasks import RecoveryTask
 from .utils import get_logger
 
 
-class GluuAgentCLI(click.MultiCommand):
-    def __init__(self, **attrs):
-        attrs["callback"] = None
-        context_settings = {"obj": Daemon}
-        super(GluuAgentCLI, self).__init__(
-            context_settings=context_settings,
-            **attrs
-        )
-
-    def list_commands(self, ctx):
-        daemon = ctx.obj()
-        return daemon.list_actions()
-
-    def get_command(self, ctx, name):
-        if name not in ctx.obj.list_actions():
-            return
-
-        logger = get_logger(ctx.params.get("logfile"))
-        service = MinionService(logger=logger)
-        daemon = ctx.obj(pidfile=ctx.params.get("pidfile"),
-                         worker=service.run_forever,
-                         )
-
-        def subcommand(debug=False):
-            if daemon.detach and debug:
-                daemon.detach = False
-                # replaces existing logger with new logger
-                # that uses StreamHandler
-                service.logger = get_logger()
-            daemon.do_action(name)
-
-        subcommand.__doc__ = daemon.get_action(name).__doc__
-
-        if name == "start":
-            # Add a --debug option for start
-            subcommand = click.option(
-                "--debug", is_flag=True,
-                help="Do NOT detach and run in the background.",
-            )(subcommand)
-
-        cmd = click.command(name)(subcommand)
-        return cmd
+@click.group(context_settings={
+    "help_option_names": ["-h", "--help"],
+})
+def main():
+    pass
 
 
-@click.command(cls=GluuAgentCLI)
+@main.command()
+@click.option(
+    "--database",
+    default="/var/lib/gluu-cluster/db/db.json",
+    help="Path to database file (default to /var/lib/gluu-cluster/db/db.json)",
+    metavar="<database>",
+    )
 @click.option(
     "--logfile",
-    default="/var/log/gluu-agent.log",
+    default=None,
+    help="Path to log file (if omitted will use stdout)",
     metavar="<logfile>",
-    help="Path to log file (default to /var/log/gluu-agent.log).",
-)
-@click.option(
-    "--pidfile",
-    default="/var/run/gluu-agent.pid",
-    metavar="<pidfile>",
-    help="Path to PID file (default to /var/run/gluu-agent.pid).",
-)
-@click.pass_context
-def main(ctx, logfile, pidfile):
-    pass
+    )
+def recover(database, logfile):
+    """Run recovery process.
+    """
+    logger = get_logger(logfile, name="gluuagent.recover")
+
+    # checks if database is exist
+    if not os.path.exists(database):
+        logger.error("unable to read database {}".format(database))
+        sys.exit(1)
+
+    db = Database(database)
+    task = RecoveryTask(db, logger)
+    task.execute()

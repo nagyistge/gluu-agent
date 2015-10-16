@@ -1,3 +1,7 @@
 click==2.5
-daemonocle==0.8
-psutil==2.1.1
+docker-py==1.2.3
+M2Crypto==0.22.3
+netaddr==0.7.18
+PyYAML==3.11
+sh==1.11
+tinydb==2.4
