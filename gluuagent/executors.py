@@ -142,6 +142,7 @@ class HttpdExecutor(BaseExecutor):
         # iptables rules are not persisted, hence we're adding them again
         for port in [80, 443]:
             try:
+                self.logger.info("deleting existing iptables rules")
                 # delete existing iptables rules (if any) for httpd node
                 # to ensure there's always unique rules for the node
                 # even when recovery is executed multiple times
@@ -155,7 +156,12 @@ class HttpdExecutor(BaseExecutor):
                     "--to-destination", "{}:{}".format(self.node["weave_ip"],
                                                        port),
                 )
+            except sh.ErrorReturnCode_1 as exc:
+                # iptables rules not exist
+                self.logger.warn(exc.stderr.strip())
 
+            try:
+                self.logger.info("adding new iptables rules")
                 sh.iptables(
                     "-t", "nat",
                     "-A", "PREROUTING",
