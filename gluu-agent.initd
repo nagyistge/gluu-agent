@@ -29,22 +29,18 @@ do_recover() {
     nohup $DAEMON recover --database $DATABASE --logfile $RECOVER_LOGFILE >/dev/null 2>&1 &
 }
 
-do_stop() {
-    
+do_nothing() {
+    # a no-op function
+    echo "gluu-agent no-op" >/dev/null
 }
 case "$1" in
     start)
         do_recover
         ;;
-    # stop)
-    #     do_stop
-    #     ;;
-    # status)
-    #     ;;
-    #restart)
-    #      do_stop
-    #      do_recover
-    #     ;;
+    stop|restart|force-reload|status)
+        # satisfy init script requirements
+        do_nothing
+        ;;
     recover)
         do_recover
         ;;
