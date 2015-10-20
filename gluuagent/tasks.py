@@ -5,6 +5,7 @@
 
 import socket
 import sys
+import time
 
 import docker
 import sh
@@ -144,6 +145,9 @@ class RecoveryTask(object):
             self.logger.warn("{} node {} is not running; restarting ..".format(
                 node["type"], node["id"]
             ))
+
+            # wait for internal routing being ready
+            time.sleep(20)
 
             self.docker.restart(node["id"])
             if node["state"] == STATE_SUCCESS:
