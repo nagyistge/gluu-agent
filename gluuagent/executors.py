@@ -156,8 +156,9 @@ class HttpdExecutor(BaseExecutor):
                     "--to-destination", "{}:{}".format(self.node["weave_ip"],
                                                        port),
                 )
-            except sh.ErrorReturnCode_1 as exc:
-                # iptables rules not exist
+            except (sh.ErrorReturnCode_1, sh.ErrorReturnCode_3,) as exc:
+                # exit code 1: iptables rules not exist
+                # exit code 3: insufficient access
                 self.logger.warn(exc.stderr.strip())
 
             try:
@@ -173,4 +174,5 @@ class HttpdExecutor(BaseExecutor):
                                                        port),
                 )
             except sh.ErrorReturnCode_3 as exc:
+                # exit code 3: insufficient access
                 self.logger.warn(exc.stderr.strip())
