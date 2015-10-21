@@ -86,7 +86,3 @@ class Database(object):
         table = self.db.table(table_name)
         data = table.search(condition)
         return data
-
-    def count_from_table(self, table_name, condition):
-        table = self.db.table(table_name)
-        return table.count(condition)

@@ -38,11 +38,11 @@ class BaseExecutor(object):
         self.db = db
 
     def run_entrypoint(self):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
 
 class LdapExecutor(BaseExecutor):
-    def run_entrypoint(self):
+    def run_entrypoint(self):  # pragma: no cover
         # entrypoint is moved to supervisord
         pass
 
