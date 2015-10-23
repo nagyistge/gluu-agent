@@ -7,7 +7,6 @@ from collections import namedtuple
 
 import sh
 
-from .constants import STATE_SUCCESS
 from .utils import get_logger
 
 DockerExecResult = namedtuple("DockerExecResult",
@@ -49,33 +48,11 @@ class LdapExecutor(BaseExecutor):
 
 class OxauthExecutor(BaseExecutor):
     def run_entrypoint(self):
-        self.add_ldap_hosts()
-
-    def add_ldap_hosts(self):
-        ldap_nodes = self.db.search_from_table(
-            "nodes",
-            (self.db.where("type") == "ldap")
-            & (self.db.where("state") == STATE_SUCCESS)
-        )
-
-        for ldap in ldap_nodes:
-            # add the entry only if line is not exist in /etc/hosts
-            cmd = "grep -q '^{0} {1}$' /etc/hosts " \
-                  "|| echo '{0} {1}' >> /etc/hosts" \
-                .format(ldap["weave_ip"], ldap["id"])
-            result = run_docker_exec(self.docker, self.node["id"], cmd)
-            if result.exit_code != 0:
-                self.logger.error(
-                    "got error with exit code {} while running docker exec; "
-                    "reason={}".format(result.exit_code, result.retval)
-                )
-                self.docker.stop(self.node["id"])
+        pass
 
 
 class OxtrustExecutor(OxauthExecutor):
     def run_entrypoint(self):
-        self.add_ldap_hosts()
-
         try:
             # if we already have httpd node in the same provider,
             # add entry to /etc/hosts and import the cert

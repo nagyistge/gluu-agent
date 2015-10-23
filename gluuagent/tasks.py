@@ -8,6 +8,7 @@ import sys
 import time
 
 import docker
+import docker.errors
 import sh
 import yaml
 
@@ -25,6 +26,11 @@ from .utils import expose_cidr
 
 def format_node(data):
     data["recovery_priority"] = RECOVERY_PRIORITY_CHOICES.get(data["type"], 0)
+    # backward-compat for older nodes
+    if "domain_name" not in data:
+        data["domain_name"] = "{}.{}.gluu.local".format(
+            data["id"], data["type"]
+        )
     return data
 
 
@@ -90,21 +96,41 @@ class RecoveryTask(object):
             self.docker.restart("prometheus")
 
     def recover_weave(self, provider, cluster):
-        if not self.container_stopped("weave"):
-            self.logger.info("weave container is already running")
-            return
+        try:
+            if not self.container_stopped("weave"):
+                self.logger.info("weave container is already running")
+                return
+        except docker.errors.APIError as exc:
+            err_code = exc.response.status_code
+            if err_code == 404:
+                self.logger.warn(exc)
+            else:
+                raise
 
         self.logger.warn("weave container is not running")
         self.logger.info("restarting weave container")
 
         passwd = decrypt_text(cluster["admin_pw"], cluster["passkey"])
         if provider["type"] == "master":
-            sh.weave("launch", "-password", passwd)
+            sh.weave(
+                "launch-router",
+                "--password", passwd,
+                "--dns-domain", "gluu.local",
+                "--ipalloc-range", cluster["weave_ip_network"],
+                "--ipalloc-default-subnet", cluster["weave_ip_network"],
+            )
         else:
             with open("/etc/salt/minion") as fp:
                 config = fp.read()
                 opts = yaml.safe_load(config)
-                sh.weave("launch", "-password", passwd, opts["master"])
+                sh.weave(
+                    "launch-router",
+                    "--password", passwd,
+                    "--dns-domain", "gluu.local",
+                    "--ipalloc-range", cluster["weave_ip_network"],
+                    "--ipalloc-default-subnet", cluster["weave_ip_network"],
+                    opts["master"],
+                )
 
         addr, prefixlen = expose_cidr(cluster["weave_ip_network"])
         sh.weave("expose", "{}/{}".format(addr, prefixlen))
@@ -158,6 +184,8 @@ class RecoveryTask(object):
                                    node["weave_prefixlen"]),
                     node["id"],
                 )
+                self.logger.info("adding domain name to local DNS server")
+                sh.weave("dns-add", node["id"], "-h", node["domain_name"])
             self.setup_node(node, provider, cluster)
 
     def setup_node(self, node, provider, cluster):
