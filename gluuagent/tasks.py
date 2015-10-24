@@ -19,6 +19,7 @@ from .executors import LdapExecutor
 from .executors import OxauthExecutor
 from .executors import OxtrustExecutor
 from .executors import HttpdExecutor
+from .executors import SamlExecutor
 from .utils import get_logger
 from .utils import decrypt_text
 from .utils import expose_cidr
@@ -194,6 +195,7 @@ class RecoveryTask(object):
             "oxauth": OxauthExecutor,
             "oxtrust": OxtrustExecutor,
             "httpd": HttpdExecutor,
+            "saml": SamlExecutor,
         }
 
         exec_cls = executors.get(node["type"])

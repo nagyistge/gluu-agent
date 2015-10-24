@@ -37,18 +37,16 @@ class BaseExecutor(object):
         self.db = db
 
     def run_entrypoint(self):
-        raise NotImplementedError  # pragma: no cover
+        """Entrypoints need to be started/executed after starting container.
+        """
 
 
 class LdapExecutor(BaseExecutor):
-    def run_entrypoint(self):  # pragma: no cover
-        # entrypoint is moved to supervisord
-        pass
+    pass
 
 
 class OxauthExecutor(BaseExecutor):
-    def run_entrypoint(self):
-        pass
+    pass
 
 
 class OxtrustExecutor(OxauthExecutor):
@@ -153,3 +151,7 @@ class HttpdExecutor(BaseExecutor):
             except sh.ErrorReturnCode_3 as exc:
                 # exit code 3: insufficient access
                 self.logger.warn(exc.stderr.strip())
+
+
+class SamlExecutor(BaseExecutor):
+    pass

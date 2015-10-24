@@ -10,6 +10,7 @@ STATE_SUCCESS = "SUCCESS"
 RECOVERY_PRIORITY_CHOICES = {
     "ldap": 1,
     "oxauth": 2,
-    "httpd": 3,
-    "oxtrust": 4,
+    "saml": 3,
+    "httpd": 4,
+    "oxtrust": 5,
 }
