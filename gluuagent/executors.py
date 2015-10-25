@@ -3,6 +3,7 @@
 #
 # All rights reserved.
 
+import time
 from collections import namedtuple
 
 import sh
@@ -42,7 +43,11 @@ class BaseExecutor(object):
 
 
 class LdapExecutor(BaseExecutor):
-    pass
+    def run_entrypoint(self):
+        # nodes like oxauth/oxtrust/saml need ldap to run first;
+        # hence we set delay to block other node's executors
+        # running simultaneously
+        time.sleep(20)
 
 
 class OxauthExecutor(BaseExecutor):
