@@ -21,7 +21,8 @@ from .executors import HttpdExecutor
 from .executors import SamlExecutor
 from .utils import get_logger
 from .utils import decrypt_text
-from .utils import expose_cidr
+from .utils import get_exposed_cidr
+from .utils import get_prometheus_cidr
 
 
 def format_node(data):
@@ -74,7 +75,7 @@ class RecoveryTask(object):
         self.recover_nodes(provider, cluster)
 
         # recover prometheus container
-        self.recover_prometheus(provider)
+        self.recover_prometheus(provider, cluster)
 
         self.logger.info(
             "recovery process for {} provider {} is finished".format(
@@ -85,7 +86,7 @@ class RecoveryTask(object):
         meta = self.docker.inspect_container(container)
         return meta["State"]["Running"] is False
 
-    def recover_prometheus(self, provider):
+    def recover_prometheus(self, provider, cluster):
         if provider["type"] == "master":
             if not self.container_stopped("prometheus"):
                 self.logger.info("prometheus container is already running")
@@ -94,6 +95,9 @@ class RecoveryTask(object):
             self.logger.warn("prometheus container is not running")
             self.logger.info("restarting prometheus container")
             self.docker.restart("prometheus")
+
+            addr, prefixlen = get_prometheus_cidr(cluster["weave_ip_network"])
+            sh.weave("attach", "{}/{}".format(addr, prefixlen), "prometheus")
 
     def recover_weave(self, provider, cluster):
         try:
@@ -132,7 +136,7 @@ class RecoveryTask(object):
                     opts["master"],
                 )
 
-        addr, prefixlen = expose_cidr(cluster["weave_ip_network"])
+        addr, prefixlen = get_exposed_cidr(cluster["weave_ip_network"])
         sh.weave("expose", "{}/{}".format(addr, prefixlen))
 
     def recover_nodes(self, provider, cluster):

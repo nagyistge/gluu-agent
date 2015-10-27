@@ -18,8 +18,15 @@ def test_decrypt_text():
     assert decrypt_text(enc_text, key) == "password"
 
 
-def test_expose_cidr():
-    from gluuagent.utils import expose_cidr
+def test_get_exposed_cidr():
+    from gluuagent.utils import get_exposed_cidr
 
     ipnet = "10.1.1.0/24"
-    assert expose_cidr(ipnet) == ("10.1.1.254", 24)
+    assert get_exposed_cidr(ipnet) == ("10.1.1.254", 24)
+
+
+def test_get_prometheus_cidr():
+    from gluuagent.utils import get_prometheus_cidr
+
+    ipnet = "10.1.1.0/24"
+    assert get_prometheus_cidr(ipnet) == ("10.1.1.253", 24)
