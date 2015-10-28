@@ -178,14 +178,12 @@ class RecoveryTask(object):
 
             self.docker.restart(node["id"])
             if node["state"] == STATE_SUCCESS:
-                self.logger.info("attaching weave IP")
-                sh.weave(
-                    "attach",
-                    "{}/{}".format(node["weave_ip"],
-                                   node["weave_prefixlen"]),
-                    node["id"],
-                )
-                self.logger.info("adding domain name to local DNS server")
+                cidr = "{}/{}".format(node["weave_ip"],
+                                      node["weave_prefixlen"])
+                self.logger.info("attaching weave IP {}".format(cidr))
+                sh.weave("attach", "{}".format(cidr), node["id"])
+                self.logger.info("adding {} to local "
+                                 "DNS server".format(node["domain_name"]))
                 sh.weave("dns-add", node["id"], "-h", node["domain_name"])
             self.setup_node(node, provider, cluster)
 
