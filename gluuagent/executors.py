@@ -57,27 +57,28 @@ class OxauthExecutor(BaseExecutor):
 class OxtrustExecutor(OxauthExecutor):
     def run_entrypoint(self):
         try:
-            # if we already have httpd node in the same provider,
+            # if we already have nginx node in the same provider,
             # add entry to /etc/hosts and import the cert
-            httpd = self.get_httpd_nodes()[0]
-            self.add_httpd_host(httpd)
-            self.import_httpd_cert()
+            node = self.get_nginx_nodes()[0]
+            self.add_nginx_host(node)
+            self.import_nginx_cert()
         except IndexError:
             pass
 
-    def get_httpd_nodes(self):
-        httpd_nodes = self.db.search_from_table(
+    def get_nginx_nodes(self):
+        nodes = self.db.search_from_table(
             "nodes",
-            (self.db.where("type") == "httpd")
+            (self.db.where("type") == "nginx")
             & (self.db.where("state") == "SUCCESS")
+            & (self.db.where("provider_id") == self.provider["id"])
         )
-        return httpd_nodes
+        return nodes
 
-    def add_httpd_host(self, httpd):
+    def add_nginx_host(self, node):
         # add the entry only if line is not exist in /etc/hosts
         cmd = "grep -q '^{0} {1}$' /etc/hosts " \
               "|| echo '{0} {1}' >> /etc/hosts" \
-            .format(httpd["weave_ip"],
+            .format(node["weave_ip"],
                     self.cluster["ox_cluster_hostname"])
         result = run_docker_exec(self.docker, self.node["id"], cmd)
         if result.exit_code != 0:
@@ -87,8 +88,8 @@ class OxtrustExecutor(OxauthExecutor):
             )
             self.docker.stop(self.node["id"])
 
-    def import_httpd_cert(self):
-        # imports httpd cert into oxtrust cacerts to avoid
+    def import_nginx_cert(self):
+        # imports nginx cert into oxtrust cacerts to avoid
         # "peer not authenticated" error
         cmd = "echo -n | openssl s_client -connect {}:443 | " \
               "sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' " \
@@ -158,5 +159,9 @@ class HttpdExecutor(BaseExecutor):
                 self.logger.warn(exc.stderr.strip())
 
 
-class SamlExecutor(BaseExecutor):
+class OxidpExecutor(BaseExecutor):
+    pass
+
+
+class NginxExecutor(BaseExecutor):
     pass

@@ -17,8 +17,9 @@ from .constants import RECOVERY_PRIORITY_CHOICES
 from .executors import LdapExecutor
 from .executors import OxauthExecutor
 from .executors import OxtrustExecutor
-from .executors import HttpdExecutor
-from .executors import SamlExecutor
+# from .executors import HttpdExecutor
+from .executors import OxidpExecutor
+from .executors import NginxExecutor
 from .utils import get_logger
 from .utils import decrypt_text
 from .utils import get_exposed_cidr
@@ -192,8 +193,9 @@ class RecoveryTask(object):
             "ldap": LdapExecutor,
             "oxauth": OxauthExecutor,
             "oxtrust": OxtrustExecutor,
-            "httpd": HttpdExecutor,
-            "saml": SamlExecutor,
+            # "httpd": HttpdExecutor,
+            "oxidp": OxidpExecutor,
+            "nginx": NginxExecutor,
         }
 
         exec_cls = executors.get(node["type"])
