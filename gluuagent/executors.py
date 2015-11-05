@@ -86,10 +86,12 @@ class OxtrustExecutor(OxauthExecutor):
             pass
 
     def get_httpd_nodes(self):
+        # get httpd nodes from same provider
         httpd_nodes = self.db.search_from_table(
             "nodes",
             (self.db.where("type") == "httpd")
             & (self.db.where("state") == "SUCCESS")
+            & (self.db.where("provider_id") == self.provider["id"]),
         )
         return httpd_nodes
 
