@@ -3,11 +3,9 @@
 #
 # All rights reserved.
 
+import time
 from collections import namedtuple
 
-import sh
-
-from .constants import STATE_SUCCESS
 from .utils import get_logger
 
 DockerExecResult = namedtuple("DockerExecResult",
@@ -38,68 +36,61 @@ class BaseExecutor(object):
         self.db = db
 
     def run_entrypoint(self):
-        raise NotImplementedError  # pragma: no cover
+        """Entrypoints need to be started/executed after starting container.
+        """
 
 
 class LdapExecutor(BaseExecutor):
-    def run_entrypoint(self):  # pragma: no cover
-        # entrypoint is moved to supervisord
-        pass
+    def run_entrypoint(self):
+        # nodes like oxauth/oxtrust/saml need ldap to run first;
+        # hence we set delay to block other node's executors
+        # running simultaneously
+        time.sleep(20)
 
 
 class OxauthExecutor(BaseExecutor):
     def run_entrypoint(self):
-        self.add_ldap_hosts()
+        time.sleep(5)
+        self.clean_restart_httpd()
 
-    def add_ldap_hosts(self):
-        ldap_nodes = self.db.search_from_table(
-            "nodes",
-            (self.db.where("type") == "ldap")
-            & (self.db.where("state") == STATE_SUCCESS)
-        )
-
-        for ldap in ldap_nodes:
-            # add the entry only if line is not exist in /etc/hosts
-            cmd = "grep -q '^{0} {1}$' /etc/hosts " \
-                  "|| echo '{0} {1}' >> /etc/hosts" \
-                .format(ldap["weave_ip"], ldap["id"])
-            result = run_docker_exec(self.docker, self.node["id"], cmd)
-            if result.exit_code != 0:
-                self.logger.error(
-                    "got error with exit code {} while running docker exec; "
-                    "reason={}".format(result.exit_code, result.retval)
-                )
-                self.docker.stop(self.node["id"])
+    def clean_restart_httpd(self):
+        resp = run_docker_exec(self.docker, self.node["id"],
+                               "supervisorctl status httpd")
+        if "RUNNING" not in resp.retval:
+            self.logger.info("httpd process is crashed; restarting ...")
+            # httpd refuses to work if previous shutdown was unclean
+            # a workaround is to remove ``/var/run/apache2/apache2.pid``
+            # before restarting supervisor program
+            cmd = "rm /var/run/apache2/apache2.pid " \
+                  "&& supervisorctl restart httpd"
+            run_docker_exec(self.docker, self.node["id"], cmd)
 
 
 class OxtrustExecutor(OxauthExecutor):
     def run_entrypoint(self):
-        self.add_ldap_hosts()
-
         try:
-            # if we already have httpd node in the same provider,
+            # if we already have nginx node in the same provider,
             # add entry to /etc/hosts and import the cert
-            httpd = self.get_httpd_nodes()[0]
-            self.add_httpd_host(httpd)
-            self.import_httpd_cert()
+            node = self.get_nginx_nodes()[0]
+            self.add_nginx_host(node)
+            self.import_nginx_cert()
         except IndexError:
             pass
 
-    def get_httpd_nodes(self):
-        # get httpd nodes from same provider
-        httpd_nodes = self.db.search_from_table(
+    def get_nginx_nodes(self):
+        nodes = self.db.search_from_table(
             "nodes",
-            (self.db.where("type") == "httpd")
+            (self.db.where("type") == "nginx")
             & (self.db.where("state") == "SUCCESS")
             & (self.db.where("provider_id") == self.provider["id"]),
         )
-        return httpd_nodes
+        return nodes
 
-    def add_httpd_host(self, httpd):
+    def add_nginx_host(self, node):
         # add the entry only if line is not exist in /etc/hosts
         cmd = "grep -q '^{0} {1}$' /etc/hosts " \
               "|| echo '{0} {1}' >> /etc/hosts" \
-            .format(httpd["weave_ip"],
+            .format(node["weave_ip"],
                     self.cluster["ox_cluster_hostname"])
         result = run_docker_exec(self.docker, self.node["id"], cmd)
         if result.exit_code != 0:
@@ -109,8 +100,8 @@ class OxtrustExecutor(OxauthExecutor):
             )
             self.docker.stop(self.node["id"])
 
-    def import_httpd_cert(self):
-        # imports httpd cert into oxtrust cacerts to avoid
+    def import_nginx_cert(self):
+        # imports nginx cert into oxtrust cacerts to avoid
         # "peer not authenticated" error
         cmd = "echo -n | openssl s_client -connect {}:443 | " \
               "sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' " \
@@ -139,42 +130,9 @@ class OxtrustExecutor(OxauthExecutor):
             )
 
 
-class HttpdExecutor(BaseExecutor):
-    def run_entrypoint(self):
-        # iptables rules are not persisted, hence we're adding them again
-        for port in [80, 443]:
-            try:
-                self.logger.info("deleting existing iptables rules")
-                # delete existing iptables rules (if any) for httpd node
-                # to ensure there's always unique rules for the node
-                # even when recovery is executed multiple times
-                sh.iptables(
-                    "-t", "nat",
-                    "-D", "PREROUTING",
-                    "-p", "tcp",
-                    "-i", "eth0",
-                    "--dport", port,
-                    "-j", "DNAT",
-                    "--to-destination", "{}:{}".format(self.node["weave_ip"],
-                                                       port),
-                )
-            except (sh.ErrorReturnCode_1, sh.ErrorReturnCode_3,) as exc:
-                # exit code 1: iptables rules not exist
-                # exit code 3: insufficient access
-                self.logger.warn(exc.stderr.strip())
+class OxidpExecutor(OxauthExecutor):
+    pass
 
-            try:
-                self.logger.info("adding new iptables rules")
-                sh.iptables(
-                    "-t", "nat",
-                    "-A", "PREROUTING",
-                    "-p", "tcp",
-                    "-i", "eth0",
-                    "--dport", port,
-                    "-j", "DNAT",
-                    "--to-destination", "{}:{}".format(self.node["weave_ip"],
-                                                       port),
-                )
-            except sh.ErrorReturnCode_3 as exc:
-                # exit code 3: insufficient access
-                self.logger.warn(exc.stderr.strip())
+
+class NginxExecutor(BaseExecutor):
+    pass

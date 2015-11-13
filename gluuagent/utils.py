@@ -41,9 +41,17 @@ def decrypt_text(encrypted_text, key):
     return decrypted_text
 
 
-def expose_cidr(ip_network):
+def get_exposed_cidr(ip_network):
     pool = IPNetwork(ip_network)
     # as the last element of pool is a broadcast address, we cannot use it;
-    # hence we fetch the last element before broadcast address
+    # hence we fetch the last 2nd element from the pool
     addr = pool[-2]
+    return str(addr), pool.prefixlen
+
+
+def get_prometheus_cidr(ip_network):
+    pool = IPNetwork(ip_network)
+    # as the last element of pool is a broadcast address, we cannot use it;
+    # hence we fetch the last 3rd element from the pool
+    addr = pool[-3]
     return str(addr), pool.prefixlen
