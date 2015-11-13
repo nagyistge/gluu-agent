@@ -17,7 +17,6 @@ from .constants import RECOVERY_PRIORITY_CHOICES
 from .executors import LdapExecutor
 from .executors import OxauthExecutor
 from .executors import OxtrustExecutor
-# from .executors import HttpdExecutor
 from .executors import OxidpExecutor
 from .executors import NginxExecutor
 from .utils import get_logger
@@ -193,7 +192,6 @@ class RecoveryTask(object):
             "ldap": LdapExecutor,
             "oxauth": OxauthExecutor,
             "oxtrust": OxtrustExecutor,
-            # "httpd": HttpdExecutor,
             "oxidp": OxidpExecutor,
             "nginx": NginxExecutor,
         }
