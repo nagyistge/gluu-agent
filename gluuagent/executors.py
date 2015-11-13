@@ -6,8 +6,6 @@
 import time
 from collections import namedtuple
 
-import sh
-
 from .utils import get_logger
 
 DockerExecResult = namedtuple("DockerExecResult",
@@ -51,7 +49,21 @@ class LdapExecutor(BaseExecutor):
 
 
 class OxauthExecutor(BaseExecutor):
-    pass
+    def run_entrypoint(self):
+        time.sleep(5)
+        self.clean_restart_httpd()
+
+    def clean_restart_httpd(self):
+        resp = run_docker_exec(self.docker, self.node["id"],
+                               "supervisorctl status httpd")
+        if "RUNNING" not in resp.retval:
+            self.logger.info("httpd process is crashed; restarting ...")
+            # httpd refuses to work if previous shutdown was unclean
+            # a workaround is to remove ``/var/run/apache2/apache2.pid``
+            # before restarting supervisor program
+            cmd = "rm /var/run/apache2/apache2.pid " \
+                  "&& supervisorctl restart httpd"
+            run_docker_exec(self.docker, self.node["id"], cmd)
 
 
 class OxtrustExecutor(OxauthExecutor):
@@ -118,48 +130,7 @@ class OxtrustExecutor(OxauthExecutor):
             )
 
 
-class HttpdExecutor(BaseExecutor):
-    def run_entrypoint(self):
-        # iptables rules are not persisted, hence we're adding them again
-        for port in [80, 443]:
-            try:
-                self.logger.info("deleting existing iptables rules")
-                # delete existing iptables rules (if any) for httpd node
-                # to ensure there's always unique rules for the node
-                # even when recovery is executed multiple times
-                sh.iptables(
-                    "-t", "nat",
-                    "-D", "PREROUTING",
-                    "-p", "tcp",
-                    "-i", "eth0",
-                    "--dport", port,
-                    "-j", "DNAT",
-                    "--to-destination", "{}:{}".format(self.node["weave_ip"],
-                                                       port),
-                )
-            except (sh.ErrorReturnCode_1, sh.ErrorReturnCode_3,) as exc:
-                # exit code 1: iptables rules not exist
-                # exit code 3: insufficient access
-                self.logger.warn(exc.stderr.strip())
-
-            try:
-                self.logger.info("adding new iptables rules")
-                sh.iptables(
-                    "-t", "nat",
-                    "-A", "PREROUTING",
-                    "-p", "tcp",
-                    "-i", "eth0",
-                    "--dport", port,
-                    "-j", "DNAT",
-                    "--to-destination", "{}:{}".format(self.node["weave_ip"],
-                                                       port),
-                )
-            except sh.ErrorReturnCode_3 as exc:
-                # exit code 3: insufficient access
-                self.logger.warn(exc.stderr.strip())
-
-
-class OxidpExecutor(BaseExecutor):
+class OxidpExecutor(OxauthExecutor):
     pass
 
 
