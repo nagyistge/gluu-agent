@@ -36,6 +36,10 @@ def test_oxauth_entrypoint(monkeypatch, docker_client, db, oxauth_node,
         "docker.Client.stop",
         lambda cls, container: None,
     )
+    monkeypatch.setattr(
+        "time.sleep",
+        lambda t: None,
+    )
     executor = OxauthExecutor(oxauth_node, master_provider, cluster,
                               docker_client, db)
     executor.run_entrypoint()
@@ -58,12 +62,4 @@ def test_oxtrust_entrypoint(monkeypatch, docker_client, db, oxtrust_node,
     )
     executor = OxtrustExecutor(oxtrust_node, master_provider, cluster,
                                docker_client, db)
-    executor.run_entrypoint()
-
-
-def test_httpd_entrypoint(monkeypatch, docker_client, db, httpd_node,
-                          master_provider, cluster):
-    from gluuagent.executors import HttpdExecutor
-    executor = HttpdExecutor(httpd_node, master_provider, cluster,
-                             docker_client, db)
     executor.run_entrypoint()
