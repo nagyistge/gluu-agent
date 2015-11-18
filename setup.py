@@ -43,9 +43,8 @@ setup(
         "m2crypto<=0.22.3",
         "netaddr",
         "pyyaml",
-        # we're still using docker v1.6.2 (API version 1.18);
-        # docker-py 1.3+ probably will break existing code
-        "docker-py<1.3",
+        # we're still using docker v1.8.3 (API version 1.20);
+        "docker-py>=1.5.0,<1.6.0",
         "sh",
         "tinydb",
     ],
