@@ -3,6 +3,14 @@ Changelog
 
 Here you can see the full list of changes between each gluu-agent release.
 
+Version 0.2.1
+-------------
+
+Release date to be announced later.
+
+* Added support for docker v1.8.3.
+
+
 Version 0.2.0
 -------------
 
