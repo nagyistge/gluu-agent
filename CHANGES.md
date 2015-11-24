@@ -9,6 +9,7 @@ Version 0.2.1
 Release date to be announced later.
 
 * Added support for docker v1.8.3.
+* tinydb is upgraded to v3.0.0.
 
 
 Version 0.2.0
