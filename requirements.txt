@@ -4,4 +4,4 @@ M2Crypto==0.22.3
 netaddr==0.7.18
 PyYAML==3.11
 sh==1.11
-tinydb==2.3.1
+tinydb==3.0.0
