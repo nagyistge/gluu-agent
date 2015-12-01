@@ -18,7 +18,12 @@ def get_logger(logfile=None, name=None):
     if not logfile:
         ch = logging.StreamHandler()
     else:
-        ch = logging.handlers.TimedRotatingFileHandler(logfile, when="d")
+        ch = logging.handlers.TimedRotatingFileHandler(
+            logfile,
+            when="d",
+            interval=1,
+            backupCount=1,
+        )
     fmt = logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
