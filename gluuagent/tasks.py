@@ -53,9 +53,14 @@ class RecoveryTask(object):
             cluster = None
 
         try:
+            # match provider with specific hostname
+            #
+            # 1. find by FQDN
+            # 2. find by hostname of the machine where the Python interpreter
+            #    is currently executing
             provider = self.db.search_from_table(
                 "providers",
-                self.db.where("hostname") == socket.getfqdn(),
+                (self.db.where("hostname") == socket.getfqdn()) | (self.db.where("hostname") == socket.gethostname()),  # noqa
             )[0]
         except IndexError:
             provider = None
