@@ -50,7 +50,8 @@ class RecoveryTask(object):
         try:
             cluster = self.db.all("clusters")[0]
         except IndexError:
-            cluster = None
+            self.logger.error("cluster is not found")
+            sys.exit(1)
 
         try:
             # match provider with specific hostname
@@ -63,10 +64,7 @@ class RecoveryTask(object):
                 (self.db.where("hostname") == socket.getfqdn()) | (self.db.where("hostname") == socket.gethostname()),  # noqa
             )[0]
         except IndexError:
-            provider = None
-
-        if not any([provider, cluster]):
-            self.logger.error("provider or cluster is invalid")
+            self.logger.error("provider is not found")
             sys.exit(1)
 
         self.logger.info("trying to recover {} provider {}".format(
