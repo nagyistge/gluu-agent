@@ -130,8 +130,20 @@ class OxtrustExecutor(OxauthExecutor):
             )
 
 
-class OxidpExecutor(OxauthExecutor):
-    pass
+class OxidpExecutor(OxtrustExecutor):
+    def run_entrypoint(self):
+        time.sleep(5)
+        self.clean_restart_httpd()
+        super(OxidpExecutor, self).run_entrypoint()
+
+    def get_nginx_nodes(self):
+        nodes = self.db.search_from_table(
+            "nodes",
+            (self.db.where("type") == "nginx")
+            & (self.db.where("state") == "SUCCESS")
+            & (self.db.where("cluster_id") == self.cluster["id"]),
+        )
+        return nodes
 
 
 class NginxExecutor(BaseExecutor):
