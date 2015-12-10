@@ -3,6 +3,13 @@ Changelog
 
 Here you can see the full list of changes between each gluu-agent release.
 
+Version 0.2.2
+-------------
+
+Release date to be announced later.
+
+* Updated recovery process for oxIdp node.
+
 Version 0.2.1
 -------------
 
