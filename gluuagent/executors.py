@@ -136,15 +136,6 @@ class OxidpExecutor(OxtrustExecutor):
         self.clean_restart_httpd()
         super(OxidpExecutor, self).run_entrypoint()
 
-    def get_nginx_nodes(self):
-        nodes = self.db.search_from_table(
-            "nodes",
-            (self.db.where("type") == "nginx")
-            & (self.db.where("state") == "SUCCESS")
-            & (self.db.where("cluster_id") == self.cluster["id"]),
-        )
-        return nodes
-
 
 class NginxExecutor(BaseExecutor):
     pass
