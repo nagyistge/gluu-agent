@@ -1,0 +1,9 @@
+[Unit]
+Description=Gluu Agent Daemon
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/gluu-agent
+
+[Install]
+WantedBy=multi-user.target
