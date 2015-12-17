@@ -6,6 +6,7 @@ After=network.target
 Type=oneshot
 ExecStartPre="mkdir -p /var/lib/gluu-cluster/db/; touch /var/lib/gluu-cluster/db/db.json; touch /var/log/gluuagent-recover.log"
 ExecStart="/usr/bin/gluu-agent recover --database /var/lib/gluu-cluster/db/db.json --logfile /var/log/gluuagent-recover.log"
+RemainAfterExit=no
 
 [Install]
 WantedBy=multi-user.target
