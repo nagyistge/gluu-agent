@@ -1,9 +1,9 @@
 [Unit]
-Description=Gluu Agent Daemon
+Description=Gluu Agent One Time Recover
 
 [Service]
-Type=forking
-ExecStart=/usr/bin/gluu-agent
+Type=oneshot
+ExecStart="/usr/bin/gluu-agent recover"
 
 [Install]
 WantedBy=multi-user.target
