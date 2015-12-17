@@ -1,5 +1,6 @@
 [Unit]
 Description=Gluu Agent One Time Recover
+After=network.target
 
 [Service]
 Type=oneshot
