@@ -105,7 +105,16 @@ class OxtrustExecutor(OxauthExecutor):
         # "peer not authenticated" error
         cmd = "echo -n | openssl s_client -connect {}:443 | " \
               "sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' " \
-              "> /tmp/ox.cert".format(self.cluster["ox_cluster_hostname"])
+              "> /etc/certs/nginx.cert".format(self.cluster["ox_cluster_hostname"])
+        result = run_docker_exec(self.docker, self.node["id"], cmd)
+        if result.exit_code != 0:
+            self.logger.error(
+                "got error with exit code {} while running docker exec; "
+                "reason={}".format(result.exit_code, result.retval)
+            )
+            self.docker.stop(self.node["id"])
+
+        cmd = "openssl x509 -outform der -in /etc/certs/nginx.cert -out /etc/certs/nginx.der"
         result = run_docker_exec(self.docker, self.node["id"], cmd)
         if result.exit_code != 0:
             self.logger.error(
@@ -117,7 +126,7 @@ class OxtrustExecutor(OxauthExecutor):
         cmd = " ".join([
             "keytool -importcert -trustcacerts",
             "-alias '{}'".format(self.cluster["ox_cluster_hostname"]),
-            "-file /tmp/ox.cert",
+            "-file /etc/certs/nginx.der",
             "-keystore {}".format(self.node["truststore_fn"]),
             "-storepass changeit -noprompt",
         ])
