@@ -9,6 +9,7 @@ Version 0.2.2
 Release date to be announced later.
 
 * Updated recovery process for oxIdp node.
+* Added feature to convert SSL pem-based to der-based format.
 
 Version 0.2.1
 -------------
