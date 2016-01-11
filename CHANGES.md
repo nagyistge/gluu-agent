@@ -6,7 +6,7 @@ Here you can see the full list of changes between each gluu-agent release.
 Version 0.2.2
 -------------
 
-Release date to be announced later.
+Released on January 12th, 2016.
 
 * Updated recovery process for oxIdp node.
 * Added feature to convert SSL pem-based to der-based format.
