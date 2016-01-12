@@ -1,0 +1,5 @@
+gluu-agent (0.2.2-1) trusty; urgency=low
+
+  * Initial release. Version 0.2.1
+
+ -- Adrian Alves <adrian@gluu.org>  Thu, 07 May 2015 13:11:14 -0500

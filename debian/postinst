@@ -1,0 +1,3 @@
+#!/bin/sh -e
+update-rc.d gluu-agent defaults > /dev/null
+service gluu-agent start
