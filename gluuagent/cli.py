@@ -40,8 +40,9 @@ def recover(database, logfile):
 
     # checks if database is exist
     if not os.path.exists(database):
-        logger.error("unable to read database {}".format(database))
-        sys.exit(1)
+        logger.warn("unable to read database {}; "
+                    "skipping recovery process".format(database))
+        sys.exit(0)
 
     db = Database(database)
     task = RecoveryTask(db, logger)
