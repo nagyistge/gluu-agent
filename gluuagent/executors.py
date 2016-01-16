@@ -148,3 +148,7 @@ class OxidpExecutor(OxtrustExecutor):
 
 class NginxExecutor(BaseExecutor):
     pass
+
+
+class OxasimbaExecutor(OxauthExecutor):
+    pass

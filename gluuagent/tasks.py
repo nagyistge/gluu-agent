@@ -19,6 +19,7 @@ from .executors import OxauthExecutor
 from .executors import OxtrustExecutor
 from .executors import OxidpExecutor
 from .executors import NginxExecutor
+from .executors import OxasimbaExecutor
 from .utils import get_logger
 from .utils import decrypt_text
 from .utils import get_exposed_cidr
@@ -197,6 +198,7 @@ class RecoveryTask(object):
             "oxtrust": OxtrustExecutor,
             "oxidp": OxidpExecutor,
             "nginx": NginxExecutor,
+            "oxasimba": OxasimbaExecutor,
         }
 
         exec_cls = executors.get(node["type"])

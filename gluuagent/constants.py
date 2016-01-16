@@ -12,5 +12,6 @@ RECOVERY_PRIORITY_CHOICES = {
     "oxauth": 2,
     "nginx": 3,
     "oxidp": 4,
-    "oxtrust": 5,
+    "oxasimba": 5,
+    "oxtrust": 6,
 }
