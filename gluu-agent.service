@@ -3,9 +3,9 @@ Description=Gluu Agent Daemon
 After=network.target
 
 [Service]
-Type=oneshot
+Type=simple
 ExecStart=/bin/sh -c '/bin/nohup /usr/bin/gluu-agent recover --database /var/lib/gluu-cluster/db/db.json --logfile /var/log/gluuagent-recover.log >/dev/null 2>&1 &'
-RemainAfterExit=no
+RemainAfterExit=yes
 
 [Install]
 WantedBy=multi-user.target
