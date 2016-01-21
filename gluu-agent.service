@@ -1,6 +1,6 @@
 [Unit]
 Description=Gluu Agent Daemon
-After=network.target
+After=network.target docker.service
 
 [Service]
 Type=simple
