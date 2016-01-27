@@ -47,11 +47,8 @@ class RecoveryTask(object):
         self.docker = docker.Client()
 
     def execute(self):
-        try:
-            cluster = self.db.all("clusters")[0]
-        except IndexError:
-            self.logger.error("cluster is not found")
-            sys.exit(1)
+        provider = None
+        cluster = None
 
         try:
             # match provider with specific hostname
@@ -61,10 +58,20 @@ class RecoveryTask(object):
             #    is currently executing
             provider = self.db.search_from_table(
                 "providers",
-                (self.db.where("hostname") == socket.getfqdn()) | (self.db.where("hostname") == socket.gethostname()),  # noqa
+                ((self.db.where("hostname") == socket.getfqdn())
+                    | (self.db.where("hostname") == socket.gethostname()))
             )[0]
         except IndexError:
             self.logger.error("provider is not found")
+            sys.exit(1)
+
+        try:
+            cluster = self.db.search_from_table(
+                "clusters",
+                self.db.where("id") == provider["cluster_id"],
+            )[0]
+        except IndexError:
+            self.logger.error("cluster is not found")
             sys.exit(1)
 
         self.logger.info("trying to recover {} provider {}".format(
@@ -78,7 +85,8 @@ class RecoveryTask(object):
         self.recover_nodes(provider, cluster)
 
         # recover prometheus container
-        self.recover_prometheus(provider, cluster)
+        if provider["type"] == "master":
+            self.recover_prometheus(provider, cluster)
 
         self.logger.info(
             "recovery process for {} provider {} is finished".format(
@@ -90,17 +98,16 @@ class RecoveryTask(object):
         return meta["State"]["Running"] is False
 
     def recover_prometheus(self, provider, cluster):
-        if provider["type"] == "master":
-            if not self.container_stopped("prometheus"):
-                self.logger.info("prometheus container is already running")
-                return
+        if not self.container_stopped("prometheus"):
+            self.logger.info("prometheus container is already running")
+            return
 
-            self.logger.warn("prometheus container is not running")
-            self.logger.info("restarting prometheus container")
-            self.docker.restart("prometheus")
+        self.logger.warn("prometheus container is not running")
+        self.logger.info("restarting prometheus container")
+        self.docker.restart("prometheus")
 
-            addr, prefixlen = get_prometheus_cidr(cluster["weave_ip_network"])
-            sh.weave("attach", "{}/{}".format(addr, prefixlen), "prometheus")
+        addr, prefixlen = get_prometheus_cidr(cluster["weave_ip_network"])
+        sh.weave("attach", "{}/{}".format(addr, prefixlen), "prometheus")
 
     def recover_weave(self, provider, cluster):
         try:
@@ -117,27 +124,33 @@ class RecoveryTask(object):
         self.logger.warn("weave container is not running")
         self.logger.info("restarting weave container")
 
+        try:
+            target_provider = self.db.search_from_table(
+                "providers",
+                self.db.where("cluster_id") == cluster["id"],
+            )[0]
+        except IndexError:
+            target_provider = None
+
         passwd = decrypt_text(cluster["admin_pw"], cluster["passkey"])
-        if provider["type"] == "master":
-            sh.weave(
-                "launch-router",
-                "--password", passwd,
-                "--dns-domain", "gluu.local",
-                "--ipalloc-range", cluster["weave_ip_network"],
-                "--ipalloc-default-subnet", cluster["weave_ip_network"],
-            )
-        else:
-            with open("/etc/salt/minion") as fp:
-                config = fp.read()
-                opts = yaml.safe_load(config)
-                sh.weave(
-                    "launch-router",
-                    "--password", passwd,
-                    "--dns-domain", "gluu.local",
-                    "--ipalloc-range", cluster["weave_ip_network"],
-                    "--ipalloc-default-subnet", cluster["weave_ip_network"],
-                    opts["master"],
-                )
+        target = ""
+        if target_provider and target_provider["id"] != provider["id"]:
+            if target_provider["docker_base_url"].startswith("https://"):
+                target = target_provider["docker_base_url"][8:].split(":")[0]
+            else:
+                with open("/etc/salt/minion") as fp:
+                    config = fp.read()
+                    opts = yaml.safe_load(config)
+                    target = opts["master"]
+
+        sh.weave(
+            "launch-router",
+            "--password", passwd,
+            "--dns-domain", "gluu.local",
+            "--ipalloc-range", cluster["weave_ip_network"],
+            "--ipalloc-default-subnet", cluster["weave_ip_network"],
+            target,
+        )
 
         addr, prefixlen = get_exposed_cidr(cluster["weave_ip_network"])
         sh.weave("expose", "{}/{}".format(addr, prefixlen))
