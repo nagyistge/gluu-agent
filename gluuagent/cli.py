@@ -23,8 +23,9 @@ def main():
 @main.command()
 @click.option(
     "--database",
-    default="/var/lib/gluu-cluster/db/db.json.recover",
-    help="Path to database file (default to /var/lib/gluu-cluster/db/db.json.recover)",  # noqa
+    default="/var/lib/gluu-cluster/db/recovery.json",
+    help="Path to recovery file (default to "
+         "/var/lib/gluu-cluster/db/recovery.json)",
     metavar="<database>",
     )
 @click.option(
