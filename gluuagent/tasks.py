@@ -3,6 +3,8 @@
 #
 # All rights reserved.
 
+import abc
+import json
 import socket
 import sys
 
@@ -35,7 +37,11 @@ def format_node(data):
     return data
 
 
-class RecoveryTask(object):
+class BaseTask(object):
+    @abc.abstractmethod
+    def execute(self):
+        pass
+
     def __init__(self, db, logger=None):
         self.logger = logger or get_logger(
             name=__name__ + "." + self.__class__.__name__
@@ -46,13 +52,7 @@ class RecoveryTask(object):
         # we use docker.Client with unix socket connection
         self.docker = docker.Client()
 
-    def execute(self):
-        try:
-            cluster = self.db.all("clusters")[0]
-        except IndexError:
-            self.logger.error("cluster is not found")
-            sys.exit(1)
-
+    def get_provider(self):
         try:
             # match provider with specific hostname
             #
@@ -63,9 +63,21 @@ class RecoveryTask(object):
                 "providers",
                 (self.db.where("hostname") == socket.getfqdn()) | (self.db.where("hostname") == socket.gethostname()),  # noqa
             )[0]
+            return provider
         except IndexError:
             self.logger.error("provider is not found")
             sys.exit(1)
+
+
+class RecoveryTask(BaseTask):
+    def execute(self):
+        try:
+            cluster = self.db.all("clusters")[0]
+        except IndexError:
+            self.logger.error("cluster is not found")
+            sys.exit(1)
+
+        provider = self.get_provider()
 
         self.logger.info("trying to recover {} provider {}".format(
             provider["type"], provider["id"],
@@ -206,3 +218,60 @@ class RecoveryTask(object):
             executor = exec_cls(node, provider, cluster,
                                 self.docker, self.db, self.logger)
             executor.run_entrypoint()
+
+
+class ImageUpdateTask(BaseTask):
+    registry_base_url = "registry.gluu.org:5000"
+
+    images = [
+        "gluuopendj",
+        "gluuoxauth",
+        "gluuoxtrust",
+        "gluuoxidp",
+        "gluunginx",
+    ]
+
+    def execute(self):
+        for image in self.images:
+            new_image = "{}/{}".format(self.registry_base_url, image)
+
+            # tag old image only if registry-based image is not exist
+            if (self.docker.images(image, quiet=True)
+                    and not self.docker.images(new_image, quiet=True)):
+                self.logger.info("migrating {} image as {}".format(
+                    image, new_image
+                ))
+                self.docker.tag(image, new_image)
+
+            # pull the updates
+            self.pull_image(new_image)
+
+        provider = self.get_provider()
+        nodes = self.db.search_from_table(
+            "nodes",
+            (self.db.where("provider_id") == provider["id"])
+            & (self.db.where("state") == STATE_SUCCESS)
+        )
+        for node in nodes:
+            self.docker.stop(node["id"])
+
+        # recover the nodes
+        recovery_task = RecoveryTask(self.db, self.logger)
+        recovery_task.execute()
+
+    def pull_image(self, image):
+        resp = self.docker.pull(repository=image, stream=True)
+        output = ""
+
+        while True:
+            try:
+                output = resp.next()
+                self.logger.info(output)
+            except StopIteration:
+                break
+
+        result = json.loads(output)
+        if "errorDetail" in result:
+            self.logger.error(result)
+            return False
+        return True
