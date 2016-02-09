@@ -236,19 +236,18 @@ class ImageUpdateTask(BaseTask):
             new_image = "{}/{}".format(self.registry_base_url, image)
 
             # pull the updates from registry
-            self.logger.info("pulling {} updates from registry".format(image))
+            self.logger.info("pulling {} updates".format(new_image))
             self.pull_image(new_image)
-
-            # tag the updated images
-            self.logger.info("tagging {} as {} image".format(new_image, image))
-            self.docker.tag(image, new_image, force=True)
 
         provider = self.get_provider()
         nodes = self.db.search_from_table(
             "nodes",
             (self.db.where("provider_id") == provider["id"])
-            & (self.db.where("state") == STATE_SUCCESS)
+            & ((self.db.where("state") == STATE_SUCCESS)
+                | (self.db.where("state") == STATE_DISABLED))
         )
+
+        self.logger.info("stopping all nodes for re-provisioning")
         for node in nodes:
             self.docker.stop(node["id"])
 
