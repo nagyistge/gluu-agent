@@ -29,6 +29,13 @@ cd gluu-agent
 python setup.py install
 ```
 
+### Get Registry Certificate
+
+```
+mkdir -p /etc/docker/certs.d/registry.gluu.org\:5000
+echo -n | openssl s_client -connect registry.gluu.org:5000 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > /etc/docker/certs.d/registry.gluu.org\:5000/ca.crt
+```
+
 ## Testing
 
 Testcases are running using ``pytest`` executed by ``tox``.
