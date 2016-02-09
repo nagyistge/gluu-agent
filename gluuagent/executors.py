@@ -6,6 +6,7 @@
 import time
 from collections import namedtuple
 
+from .constants import STATE_SUCCESS
 from .utils import get_logger
 
 DockerExecResult = namedtuple("DockerExecResult",
@@ -73,7 +74,8 @@ class OxtrustExecutor(OxauthExecutor):
             # add entry to /etc/hosts and import the cert
             node = self.get_nginx_nodes()[0]
             self.add_nginx_host(node)
-            self.import_nginx_cert()
+            if self.node["id"] == STATE_SUCCESS:
+                self.import_nginx_cert()
         except IndexError:
             pass
 
