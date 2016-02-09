@@ -235,16 +235,13 @@ class ImageUpdateTask(BaseTask):
         for image in self.images:
             new_image = "{}/{}".format(self.registry_base_url, image)
 
-            # tag old image only if registry-based image is not exist
-            if (self.docker.images(image, quiet=True)
-                    and not self.docker.images(new_image, quiet=True)):
-                self.logger.info("migrating {} image as {}".format(
-                    image, new_image
-                ))
-                self.docker.tag(image, new_image)
-
-            # pull the updates
+            # pull the updates from registry
+            self.logger.info("pulling {} updates from registry".format(image))
             self.pull_image(new_image)
+
+            # tag the updated images
+            self.logger.info("tagging {} as {} image".format(new_image, image))
+            self.docker.tag(image, new_image, force=True)
 
         provider = self.get_provider()
         nodes = self.db.search_from_table(
