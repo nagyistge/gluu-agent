@@ -74,7 +74,7 @@ class OxtrustExecutor(OxauthExecutor):
             # add entry to /etc/hosts and import the cert
             node = self.get_nginx_nodes()[0]
             self.add_nginx_host(node)
-            if self.node["id"] == STATE_SUCCESS:
+            if self.node["state"] == STATE_SUCCESS:
                 self.import_nginx_cert()
         except IndexError:
             pass
