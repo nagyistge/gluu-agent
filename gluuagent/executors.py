@@ -112,7 +112,8 @@ class OxtrustExecutor(OxauthExecutor):
                 "got error with exit code {} while running docker exec; "
                 "reason={}".format(result.exit_code, result.retval)
             )
-            self.docker.stop(self.node["id"])
+
+            # no need to execute further ops
             return
 
         cmd = "openssl x509 -outform der -in /etc/certs/nginx.cert -out /etc/certs/nginx.der"
@@ -122,8 +123,6 @@ class OxtrustExecutor(OxauthExecutor):
                 "got error with exit code {} while running docker exec; "
                 "reason={}".format(result.exit_code, result.retval)
             )
-            self.docker.stop(self.node["id"])
-            return
 
         cmd = " ".join([
             "keytool -importcert -trustcacerts",
@@ -139,7 +138,6 @@ class OxtrustExecutor(OxauthExecutor):
                 "got error with exit code {} while running docker exec; "
                 "reason={}".format(result.exit_code, result.retval)
             )
-            self.docker.stop(self.node["id"])
 
 
 class OxidpExecutor(OxtrustExecutor):
