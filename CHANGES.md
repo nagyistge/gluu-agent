@@ -3,6 +3,13 @@ Changelog
 
 Here you can see the full list of changes between each gluu-agent release.
 
+Version 0.2.3
+-------------
+
+Released on February 25th, 2016.
+
+* Fixed certificate import process.
+
 Version 0.2.2
 -------------
 
