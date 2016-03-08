@@ -197,9 +197,15 @@ class RecoveryTask(BaseTask):
                                       node["weave_prefixlen"])
                 self.logger.info("attaching weave IP {}".format(cidr))
                 sh.weave("attach", "{}".format(cidr), node["id"])
+
                 self.logger.info("adding {} to local "
                                  "DNS server".format(node["domain_name"]))
                 sh.weave("dns-add", node["id"], "-h", node["domain_name"])
+
+                if node["type"] == "ldap":
+                    self.logger.info("adding ldap.gluu.local to "
+                                     "local DNS server")
+                    sh.weave("dns-add", node["id"], "-h", "ldap.gluu.local")
             self.setup_node(node, provider, cluster)
 
     def setup_node(self, node, provider, cluster):
