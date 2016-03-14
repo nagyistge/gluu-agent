@@ -61,7 +61,8 @@ class BaseTask(object):
             #    is currently executing
             provider = self.db.search_from_table(
                 "providers",
-                (self.db.where("hostname") == socket.getfqdn()) | (self.db.where("hostname") == socket.gethostname()),  # noqa
+                (self.db.where("hostname") == socket.getfqdn())
+                | (self.db.where("hostname") == socket.gethostname()),
             )[0]
             return provider
         except IndexError:
