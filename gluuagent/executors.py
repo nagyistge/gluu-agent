@@ -6,7 +6,6 @@
 import time
 from collections import namedtuple
 
-from .constants import STATE_SUCCESS
 from .utils import get_logger
 
 DockerExecResult = namedtuple("DockerExecResult",
@@ -71,11 +70,9 @@ class OxtrustExecutor(OxauthExecutor):
     def run_entrypoint(self):
         try:
             # if we already have nginx node in the same provider,
-            # add entry to /etc/hosts and import the cert
+            # add entry to /etc/hosts
             node = self.get_nginx_nodes()[0]
             self.add_nginx_host(node)
-            if self.node["state"] == STATE_SUCCESS:
-                self.import_nginx_cert()
         except IndexError:
             pass
 
@@ -101,45 +98,6 @@ class OxtrustExecutor(OxauthExecutor):
                 "reason={}".format(result.exit_code, result.retval)
             )
             self.docker.stop(self.node["id"])
-
-    def import_nginx_cert(self):
-        # imports nginx cert into oxtrust cacerts to avoid
-        # "peer not authenticated" error
-        cmd = "echo -n | openssl s_client -connect {}:443 | " \
-              "sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' " \
-              "> /etc/certs/nginx.cert".format(self.cluster["ox_cluster_hostname"])
-        result = run_docker_exec(self.docker, self.node["id"], cmd)
-        if result.exit_code != 0:
-            self.logger.error(
-                "got error with exit code {} while running docker exec; "
-                "reason={}".format(result.exit_code, result.retval)
-            )
-
-            # no need to execute further ops
-            return
-
-        cmd = "openssl x509 -outform der -in /etc/certs/nginx.cert -out /etc/certs/nginx.der"
-        result = run_docker_exec(self.docker, self.node["id"], cmd)
-        if result.exit_code != 0:
-            self.logger.error(
-                "got error with exit code {} while running docker exec; "
-                "reason={}".format(result.exit_code, result.retval)
-            )
-
-        cmd = " ".join([
-            "keytool -importcert -trustcacerts",
-            "-alias '{}'".format(self.cluster["ox_cluster_hostname"]),
-            "-file /etc/certs/nginx.der",
-            "-keystore {}".format(self.node["truststore_fn"]),
-            "-storepass changeit -noprompt",
-        ])
-        result = run_docker_exec(self.docker, self.node["id"], cmd)
-        if result.exit_code != 0:
-            # it is safe to have error when importing existing cert
-            self.logger.warn(
-                "got error with exit code {} while running docker exec; "
-                "reason={}".format(result.exit_code, result.retval)
-            )
 
 
 class OxidpExecutor(OxtrustExecutor):
