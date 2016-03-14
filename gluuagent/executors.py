@@ -13,10 +13,7 @@ DockerExecResult = namedtuple("DockerExecResult",
 
 
 def run_docker_exec(client, container, cmd):
-    exec_cmd = client.exec_create(
-        container,
-        cmd='sh -c "{}"'.format(cmd),
-    )
+    exec_cmd = client.exec_create(container, cmd=cmd)
     retval = client.exec_start(exec_cmd)
     inspect = client.exec_inspect(exec_cmd)
     result = DockerExecResult(cmd=cmd, exit_code=inspect["ExitCode"],
@@ -63,6 +60,7 @@ class OxauthExecutor(BaseExecutor):
             # before restarting supervisor program
             cmd = "rm /var/run/apache2/apache2.pid " \
                   "&& supervisorctl restart httpd"
+            cmd = '''sh -c "{}"'''.format(cmd)
             run_docker_exec(self.docker, self.node["id"], cmd)
 
 
@@ -91,7 +89,9 @@ class OxtrustExecutor(OxauthExecutor):
               "|| echo '{0} {1}' >> /etc/hosts" \
             .format(node["weave_ip"],
                     self.cluster["ox_cluster_hostname"])
+        cmd = '''sh -c "{}"'''.format(cmd)
         result = run_docker_exec(self.docker, self.node["id"], cmd)
+
         if result.exit_code != 0:
             self.logger.error(
                 "got error with exit code {} while running docker exec; "
