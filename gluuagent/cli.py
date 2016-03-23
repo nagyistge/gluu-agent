@@ -26,15 +26,18 @@ def main():
     "--database",
     default="/var/lib/gluu-cluster/db/db.json",
     help="Path to database file (default to /var/lib/gluu-cluster/db/db.json)",
-    metavar="<database>",
     )
 @click.option(
     "--logfile",
     default=None,
     help="Path to log file (if omitted will use stdout)",
-    metavar="<logfile>",
     )
-def recover(database, logfile):
+@click.option(
+    "--encrypted",
+    is_flag=True,
+    help="Enable weave encryption.",
+    )
+def recover(database, logfile, encrypted):
     """Run recovery process.
     """
     logger = get_logger(logfile, name="gluuagent.recover")
@@ -46,7 +49,7 @@ def recover(database, logfile):
         sys.exit(0)
 
     db = Database(database)
-    task = RecoveryTask(db, logger)
+    task = RecoveryTask(db, logger, encrypted)
     task.execute()
 
 
@@ -55,13 +58,11 @@ def recover(database, logfile):
     "--database",
     default="/var/lib/gluu-cluster/db/db.json",
     help="Path to database file (default to /var/lib/gluu-cluster/db/db.json)",
-    metavar="<database>",
     )
 @click.option(
     "--logfile",
     default=None,
     help="Path to log file (if omitted will use stdout)",
-    metavar="<logfile>",
     )
 def update_images(database, logfile):
     """Run image update process.

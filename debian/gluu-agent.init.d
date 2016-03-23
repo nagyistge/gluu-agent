@@ -16,6 +16,7 @@ DAEMON=/usr/bin/gluu-agent
 SCRIPTNAME=/etc/init.d/$NAME
 DATABASE=/var/lib/gluu-cluster/db/db.json
 RECOVER_LOGFILE=/var/log/gluuagent-recover.log
+RECOVER_ENCRYPTED=0
 
 # Exit if the package is not installed
 [ -x "$DAEMON" ] || exit 0
@@ -26,7 +27,11 @@ RECOVER_LOGFILE=/var/log/gluuagent-recover.log
 . /lib/lsb/init-functions
 
 do_recover() {
-    nohup $DAEMON recover --database $DATABASE --logfile $RECOVER_LOGFILE >/dev/null 2>&1 &
+    if [[ $RECOVER_ENCRYPTED = 0 ]]; then
+        nohup $DAEMON recover --database $DATABASE --logfile $RECOVER_LOGFILE >/dev/null 2>&1 &
+    else
+        nohup $DAEMON recover --encrypted --database $DATABASE --logfile $RECOVER_LOGFILE >/dev/null 2>&1 &
+    fi
 }
 
 do_nothing() {

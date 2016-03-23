@@ -42,11 +42,12 @@ class BaseTask(object):
     def execute(self):
         pass
 
-    def __init__(self, db, logger=None):
+    def __init__(self, db, logger=None, encrypted=False):
         self.logger = logger or get_logger(
             name=__name__ + "." + self.__class__.__name__
         )
         self.db = db
+        self.encrypted = encrypted
 
         # as we only need to recover containers locally,
         # we use docker.Client with unix socket connection
@@ -130,7 +131,10 @@ class RecoveryTask(BaseTask):
         self.logger.warn("weave container is not running")
         self.logger.info("restarting weave container")
 
-        passwd = decrypt_text(cluster["admin_pw"], cluster["passkey"])
+        passwd = ""
+        if self.encrypted:
+            passwd = decrypt_text(cluster["admin_pw"], cluster["passkey"])
+
         if provider["type"] == "master":
             sh.weave(
                 "launch-router",
