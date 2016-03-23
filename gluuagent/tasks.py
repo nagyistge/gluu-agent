@@ -190,6 +190,12 @@ class RecoveryTask(BaseTask):
                 self.logger.info("{} node {} is already running".format(
                     node["type"], node["id"]
                 ))
+
+                # if weave is relaunched by another tool, DNS entries
+                # might not be restored, hence we're readding the entries
+                sh.weave("dns-add", node["id"], "-h", node["domain_name"])
+                if node["type"] == "ldap":
+                    sh.weave("dns-add", node["id"], "-h", "ldap.gluu.local")
                 continue
 
             self.logger.warn("{} node {} is not running; restarting ..".format(
