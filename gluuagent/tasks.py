@@ -196,6 +196,9 @@ class RecoveryTask(BaseTask):
                 sh.weave("dns-add", node["id"], "-h", node["domain_name"])
                 if node["type"] == "ldap":
                     sh.weave("dns-add", node["id"], "-h", "ldap.gluu.local")
+
+                if node["type"] == "nginx":
+                    sh.weave("dns-add", node["id"], "-h", cluster["ox_cluster_hostname"])  # noqa
                 continue
 
             self.logger.warn("{} node {} is not running; restarting ..".format(
@@ -217,6 +220,9 @@ class RecoveryTask(BaseTask):
                     self.logger.info("adding ldap.gluu.local to "
                                      "local DNS server")
                     sh.weave("dns-add", node["id"], "-h", "ldap.gluu.local")
+
+                if node["type"] == "nginx":
+                    sh.weave("dns-add", node["id"], "-h", cluster["ox_cluster_hostname"])  # noqa
             self.setup_node(node, provider, cluster)
 
     def setup_node(self, node, provider, cluster):

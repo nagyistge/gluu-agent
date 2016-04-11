@@ -66,13 +66,14 @@ class OxauthExecutor(BaseExecutor):
 
 class OxtrustExecutor(OxauthExecutor):
     def run_entrypoint(self):
-        try:
-            # if we already have nginx node in the same provider,
-            # add entry to /etc/hosts
-            node = self.get_nginx_nodes()[0]
-            self.add_nginx_host(node)
-        except IndexError:
-            pass
+        pass
+        # try:
+        #     # if we already have nginx node in the same provider,
+        #     # add entry to /etc/hosts
+        #     node = self.get_nginx_nodes()[0]
+        #     # self.add_nginx_host(node)
+        # except IndexError:
+        #     pass
 
     def get_nginx_nodes(self):
         nodes = self.db.search_from_table(
